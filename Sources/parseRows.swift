@@ -57,12 +57,12 @@ extension PostgresStORM {
 				case "float":
 					params[result.fieldName(index: f)!] = result.getFieldFloat(tupleIndex: x, fieldIndex: f)
 
-				case "date":
-					let output = result.getFieldString(tupleIndex: x, fieldIndex: f)
-					let formatter = DateFormatter()
-					formatter.dateFormat = "yyyy/MM/dd hh:mm Z"
-					params[result.fieldName(index: f)!] = formatter.date(from: output!)
-
+				case "date", "timestamp":
+                    if let output = result.getFieldString(tupleIndex: x, fieldIndex: f) {
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // 2018-10-15 14:57:23
+                        params[result.fieldName(index: f)!] = formatter.date(from: output)
+                    }
 					// time
 					// timestamp
 					// timestampz

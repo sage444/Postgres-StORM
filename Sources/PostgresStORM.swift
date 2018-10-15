@@ -46,14 +46,19 @@ open class PostgresStORM: StORM, StORMProtocol {
 		super.init()
 	}
 
-	private func printDebug(_ statement: String, _ params: [String]) {
-		if StORMdebug { LogFile.debug("StORM Debug: \(statement) : \(params.joined(separator: ", "))", logFile: "./StORMlog.txt") }
-	}
+    private func printDebug(_ statement: String, _ params: [Any?]) {
+        if StORMdebug {
+            let strParams = params.map { p in
+                return String(describing: p)
+            }
+            LogFile.debug("StORM Debug: \(statement) : \(strParams.joined(separator: ", "))", logFile: "./StORMlog.txt")
+        }
+    }
 
 	// Internal function which executes statements, with parameter binding
 	// Returns raw result
 	@discardableResult
-	func exec(_ statement: String, params: [String]) throws -> PGResult {
+	func exec(_ statement: String, params: [Any?]) throws -> PGResult {
 		let thisConnection = PostgresConnect(
 			host:		PostgresConnector.host,
 			username:	PostgresConnector.username,
@@ -177,7 +182,14 @@ open class PostgresStORM: StORM, StORMProtocol {
 	open func save(set: (_ id: Any)->Void) throws {
 		do {
 			if keyIsEmpty() {
-				let setId = try insert(asData(1))
+                let withNULL = asData(1).map { (arg0)  -> (String, Any?) in
+                    let (key, value) = arg0
+                    if let value = value as? String {
+                        return ((key, value == "NULL" ? nil : value))
+                    }
+                    return ((key, value))
+                }
+				let setId = try insert(withNULL)
 				set(setId)
 			} else {
 				let (idname, idval) = firstAsKey()
