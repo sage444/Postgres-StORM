@@ -9,6 +9,7 @@
 import StORM
 import PerfectPostgreSQL
 import PerfectLogger
+import Foundation
 
 /// PostgresConnector sets the connection parameters for the PostgreSQL Server access
 /// Usage:
@@ -48,7 +49,14 @@ open class PostgresStORM: StORM, StORMProtocol {
 
     private func printDebug(_ statement: String, _ params: [Any?]) {
         if StORMdebug {
-            let strParams = params.map { p in
+            let strParams = params.map { p -> String in
+                guard let p = p else {
+                    return "NULL"
+                }
+                let m = Mirror(reflecting: p)
+                if m.displayStyle == .optional, let value = m.children.first?.value {
+                    return String(describing: value)
+                }
                 return String(describing: p)
             }
             LogFile.debug("StORM Debug: \(statement) : \(strParams.joined(separator: ", "))", logFile: "./StORMlog.txt")
@@ -73,9 +81,25 @@ open class PostgresStORM: StORM, StORMProtocol {
 			throw StORMError.error("Connection Error")
 		}
 		thisConnection.statement = statement
-
+        var unwrapped = Array<Any?>.init(repeating: nil, count: params.count)
 		printDebug(statement, params)
-		let result = thisConnection.server.exec(statement: statement, params: params)
+        for i in 0..<unwrapped.count {
+            guard let p = params[i] else {
+                continue
+            }
+            let m = Mirror(reflecting: p)
+            if m.displayStyle == .optional {
+                if let v = m.children.first?.value {
+                    unwrapped[i] = v
+                    continue
+                }
+                continue
+            }
+            unwrapped[i] = p
+        }
+
+        printDebug(statement, unwrapped)
+		let result = thisConnection.server.exec(statement: statement, params: unwrapped)
 
 		// set exec message
 		errorMsg = thisConnection.server.errorMessage().trimmingCharacters(in: .whitespacesAndNewlines)
@@ -162,10 +186,10 @@ open class PostgresStORM: StORM, StORMProtocol {
 	open func save() throws {
 		do {
 			if keyIsEmpty() {
-				try insert(asData(1))
+				try insert(asDataOptional(1))
 			} else {
 				let (idname, idval) = firstAsKey()
-				try update(data: asData(1), idName: idname, idValue: idval)
+				try update(data: asDataOptional(1), idName: idname, idValue: idval)
 			}
 		} catch {
 			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
@@ -182,18 +206,11 @@ open class PostgresStORM: StORM, StORMProtocol {
 	open func save(set: (_ id: Any)->Void) throws {
 		do {
 			if keyIsEmpty() {
-                let withNULL = asData(1).map { (arg0)  -> (String, Any?) in
-                    let (key, value) = arg0
-                    if let value = value as? String {
-                        return ((key, value == "NULL" ? nil : value))
-                    }
-                    return ((key, value))
-                }
-				let setId = try insert(withNULL)
+				let setId = try insert(asDataOptional(1))
 				set(setId)
 			} else {
 				let (idname, idval) = firstAsKey()
-				try update(data: asData(1), idName: idname, idValue: idval)
+				try update(data: asDataOptional(1), idName: idname, idValue: idval)
 			}
 		} catch {
 			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
@@ -202,10 +219,9 @@ open class PostgresStORM: StORM, StORMProtocol {
 	}
 
 	/// Unlike the save() methods, create() mandates the addition of a new document, regardless of whether an ID has been set or specified.
-
 	override open func create() throws {
 		do {
-			try insert(asData())
+            _ = try insert(asDataOptional())
 		} catch {
 			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
 			throw StORMError.error("\(error)")
@@ -222,58 +238,88 @@ open class PostgresStORM: StORM, StORMProtocol {
 	/// Table Creation
 	/// Requires the connection to be configured, as well as a valid "table" property to have been set in the class
 
-	open func setup(_ str: String = "") throws {
-		LogFile.info("Running setup: \(table())", logFile: "./StORMlog.txt")
-		var createStatement = str
-		if str.count == 0 {
-			var opt = [String]()
-			var keyName = ""
-			for child in Mirror(reflecting: self).children {
-				guard let key = child.label else {
-					continue
-				}
-				var verbage = ""
-				if !key.hasPrefix("internal_") && !key.hasPrefix("_") {
-					verbage = "\(key.lowercased()) "
-					if child.value is Int && opt.count == 0 {
-						verbage += "serial"
-					} else if child.value is Int {
-						verbage += "int8"
-					} else if child.value is Bool {
-						verbage += "bool"
-					} else if child.value is [String:Any] {
-						verbage += "jsonb"
-					// Adding support for arrays
-					} else if child.value is [String] || child.value is [Int] || child.value is [Any] {
-						verbage += "text" // they are stored as comma delimited arrays
-					} else if child.value is Double {
-						verbage += "float8"
-					} else if child.value is UInt || child.value is UInt8 || child.value is UInt16 || child.value is UInt32 || child.value is UInt64 {
-						verbage += "bytea"
-					} else {
-						verbage += "text"
-					}
-					if opt.count == 0 {
-						verbage += " NOT NULL"
-						keyName = key
-					}
-					opt.append(verbage)
-				}
-			}
-			let keyComponent = ", CONSTRAINT \(table())_key PRIMARY KEY (\(keyName)) NOT DEFERRABLE INITIALLY IMMEDIATE"
-
-			createStatement = "CREATE TABLE IF NOT EXISTS \(table()) (\(opt.joined(separator: ", "))\(keyComponent));"
-			if StORMdebug { LogFile.info("createStatement: \(createStatement)", logFile: "./StORMlog.txt") }
-
-		}
-		do {
-			try sql(createStatement, params: [])
-		} catch {
-			LogFile.error("Error msg: \(error)", logFile: "./StORMlog.txt")
-			throw StORMError.error("\(error)")
-		}
+    open func setup(_ str: String = "") throws {
+        LogFile.info("Running setup: \(table())", logFile: "./StORMlog.txt")
+        var createStatement = str
+        if str.count == 0 {
+            var opt = [String]()
+            var keyName = ""
+            for child in Mirror(reflecting: self).children {
+                guard let key = child.label, !key.hasPrefix("internal_"), !key.hasPrefix("_") else {
+                    continue
+                }
+                let m = Mirror(reflecting: child.value)
+                var isOptional = false
+                if let displayStyle = m.displayStyle, displayStyle == .optional {
+                    isOptional = true
+                }
+                
+                var verbage = "\(key) "
+                if opt.count == 0 && [Int.self].contains { $0 == m.subjectType }  {
+                    verbage += "bigserial"
+                } else if [Int.self, Int?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "integer"
+                } else if [Bool.self, Bool?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "boolean"
+                } else if  [Double.self, Double?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "double precision"
+                } else if [UInt8.self, UInt8?.self, UInt16.self, UInt16?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "smallint"
+                } else if  [UInt32.self, UInt32?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "integer"
+                } else if [UInt.self, UInt?.self, UInt64.self, UInt64?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "biginteger"
+                } else if [Date.self, Date?.self].contains(where: { $0 == m.subjectType }) {
+                    verbage += "timestamp"
+                } else {
+                    verbage += "text"
+                }
+                if opt.count == 0 {
+                    verbage += " NOT NULL"
+                    keyName = key
+                }
+                if isOptional {
+                    verbage += " NULL"
+                }
+                opt.append(verbage)
+                
+            }
+            let keyComponent = ", CONSTRAINT \(table())_key PRIMARY KEY (\(keyName)) NOT DEFERRABLE INITIALLY IMMEDIATE"
+            
+            createStatement = "CREATE TABLE IF NOT EXISTS \(table()) (\(opt.joined(separator: ", "))\(keyComponent));"
+            if StORMdebug { LogFile.info("createStatement: \(createStatement)", logFile: "./StORMlog.txt") }
+            
+        }
+        do {
+            try sql(createStatement, params: [])
+        } catch {
+            LogFile.error("Error msg: \(error)", logFile: "./StORMlog.txt")
+            throw StORMError.error("\(error)")
+        }
 	}
 
+    open func modifyValue(_ v: Any?, forKey k: String) -> Any? {
+        return v
+    }
+    
+    open func asDataOptional(_ offset: Int = 0) -> [(String, Any?)] {
+        var c = [(String, Any?)]()
+        var count = 0
+        let mirror = Mirror(reflecting: self)
+        for case let (label?, value) in mirror.children {
+            if count >= offset && !label.hasPrefix("internal_") && !label.hasPrefix("_") {
+                if value is [String:Any] {
+                    c.append((label, modifyValue(try! (value as! [String:Any]).jsonEncodedString(), forKey: label)))
+                } else if value is [String] {
+                    c.append((label, modifyValue((value as! [String]).joined(separator: ","), forKey: label)))
+                } else {
+                    c.append((label, modifyValue(value, forKey: label)))
+                }
+            }
+            count += 1
+        }
+        return c
+    }
 }
 
 

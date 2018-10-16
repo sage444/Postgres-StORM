@@ -28,40 +28,6 @@ extension PostgresStORM {
 			throw StORMError.error("\(error)")
 		}
 	}
-    
-    public func insert(_ data: [(String, Any)]) throws -> Any {
-        var keys = [String]()
-        var vals = [Any]()
-        for i in data {
-            keys.append(i.0)
-            vals.append(i.1)
-        }
-        do {
-            return try insert(cols: keys, params: vals)
-        } catch {
-            LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
-            throw StORMError.error("\(error)")
-        }
-    }
-
-	/// Insert function where the suppled data is in [String: Any] format.
-	public func insert(_ data: [String: Any]) throws -> Any {
-
-		var keys = [String]()
-		var vals = [String]()
-		for i in data.keys {
-			keys.append(i.lowercased())
-			vals.append(data[i] as! String)
-		}
-
-		do {
-			return try insert(cols: keys, params: vals)
-		} catch {
-			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
-			throw StORMError.error("\(error)")
-		}
-	}
-	
 
 	/// Insert function where the suppled data is in matching arrays of columns and parameter values.
 	public func insert(cols: [String], params: [Any?]) throws -> Any {
@@ -77,15 +43,10 @@ extension PostgresStORM {
 
 	/// Insert function where the suppled data is in matching arrays of columns and parameter values, as well as specifying the name of the id column.
 	public func insert(cols: [String], params: [Any?], idcolumn: String) throws -> Any {
-
-		var paramString = [String]()
 		var substString = [String]()
 		for i in 0..<params.count {
-			paramString.append(String(describing: params[i]))
 			substString.append("$\(i+1)")
 		}
-
-		//"\"" + columns.joined(separator: "\",\"") + "\""
 
 		let colsjoined = "\"" + cols.joined(separator: "\",\"") + "\""
 		let str = "INSERT INTO \(self.table()) (\(colsjoined.lowercased())) VALUES(\(substString.joined(separator: ","))) RETURNING \"\(idcolumn.lowercased())\""
@@ -98,8 +59,5 @@ extension PostgresStORM {
 			self.error = StORMError.error("\(error)")
 			throw error
 		}
-
 	}
-
-
 }
