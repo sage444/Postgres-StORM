@@ -6,6 +6,12 @@ import StORM
 
 
 class User: PostgresStORM {
+    enum AnyThing:String {
+        case case1
+        case case2
+        case case3
+        case case4
+    }
 	// NOTE: First param in class should be the ID.
 	var id				: Int = 0
 	var firstname		: String = ""
@@ -14,7 +20,7 @@ class User: PostgresStORM {
 	var stringarray		= [String]()
     var birthday        : Date?
     var deathday        : Date?
-
+    var state           : AnyThing = .case1
 
 	override open func table() -> String {
 		return "users_test1"
@@ -28,6 +34,7 @@ class User: PostgresStORM {
 		stringarray		= toArrayString(this.data["stringarray"] as? String ?? "")
         birthday        = this.data["birthday"] as? Date ?? Date()
         deathday        = this.data["deathday"] as? Date
+        state           = AnyThing(rawValue: this.data["state"] as? String ?? AnyThing.case1.rawValue)!
 	}
 
 	func rows() -> [User] {
@@ -74,7 +81,7 @@ class PostgresStORMTests: XCTestCase {
 		let obj = User()
 		obj.firstname = "X"
 		obj.lastname = "Y"
-
+        obj.state = .case3
 		do {
 			try obj.save {id in obj.id = id as! Int }
 		} catch {
@@ -101,6 +108,7 @@ class PostgresStORMTests: XCTestCase {
 		obj.firstname = "A"
 		obj.lastname = "B"
         obj.birthday = nil
+        obj.state = .case2
 		do {
 			try obj.save()
 		} catch {
@@ -130,6 +138,7 @@ class PostgresStORMTests: XCTestCase {
 			obj.firstname	= "Mister"
 			obj.lastname	= "PotatoHead"
 			obj.email		= "potato@example.com"
+            obj.state       = .case2
 			try obj.create()
 		} catch {
 			XCTFail(String(describing: error))
@@ -144,6 +153,7 @@ class PostgresStORMTests: XCTestCase {
 		let obj = User()
 		obj.firstname = "X"
 		obj.lastname = "Y"
+        obj.state = .case3
 
 		do {
 			try obj.save {id in obj.id = id as! Int }
@@ -161,6 +171,7 @@ class PostgresStORMTests: XCTestCase {
 		XCTAssert(obj.id == obj2.id, "Object not the same (id)")
 		XCTAssert(obj.firstname == obj2.firstname, "Object not the same (firstname)")
 		XCTAssert(obj.lastname == obj2.lastname, "Object not the same (lastname)")
+        XCTAssert(obj.state == obj2.state, "Object not the same (state)")
 	}
 
 
@@ -189,6 +200,7 @@ class PostgresStORMTests: XCTestCase {
 		XCTAssert(obj.id == obj2.id, "Object not the same (id)")
 		XCTAssert(obj.firstname == obj2.firstname, "Object not the same (firstname)")
 		XCTAssert(obj.lastname == obj2.lastname, "Object not the same (lastname)")
+        XCTAssert(obj.state == obj2.state, "Object not the same (state)")
 	}
 
 	/* =============================================================================================
@@ -419,6 +431,26 @@ class PostgresStORMTests: XCTestCase {
             XCTFail("Failed to decode JSON.")
         }
     
+    }
+    
+    func testFindByEnumValue() {
+        let obj = User()
+        obj.state = .case4
+        
+        do {
+            try obj.save {id in obj.id = id as! Int }
+        } catch {
+            XCTFail(String(describing: error))
+        }
+
+        
+        let obj2 = User()
+        do {
+            try obj2.find([("state",User.AnyThing.case4)])
+            XCTAssert(obj2.results.rows.count > 0, "filed to find objects by state")
+        } catch let err {
+            XCTFail("Failed to find my enum argument: \(err)")
+        }
     }
 
 	static var allTests : [(String, (PostgresStORMTests) -> () throws -> Void)] {

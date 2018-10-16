@@ -93,7 +93,7 @@ extension PostgresStORM {
 		var set = [String]()
 		var counter = 0
 		for i in data.keys {
-			paramsString.append(data[i] as! String)
+            paramsString.append(String(describing: data[i]!))
 			set.append("\(i.lowercased()) = $\(counter+1)")
 			counter += 1
 		}

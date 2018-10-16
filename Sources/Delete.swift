@@ -9,6 +9,7 @@
 import PerfectLib
 import StORM
 import PerfectLogger
+import Foundation
 
 /// Performs delete-specific functions as an extension
 extension PostgresStORM {
@@ -45,9 +46,9 @@ extension PostgresStORM {
 
 	/// Deletes one row, with an id as a UUID
 	@discardableResult
-	public func delete(_ id: UUID, idName: String = "id") throws -> Bool {
+	public func delete(_ id: Foundation.UUID, idName: String = "id") throws -> Bool {
 		do {
-			try exec(deleteSQL(self.table(), idName: idName), params: [id.string])
+			try exec(deleteSQL(self.table(), idName: idName), params: [id.uuidString])
 		} catch {
 			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
 			self.error = StORMError.error("\(error)")
