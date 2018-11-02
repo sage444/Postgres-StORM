@@ -268,7 +268,7 @@ open class PostgresStORM: StORM, StORMProtocol {
                 } else if  [UInt32.self, UInt32?.self].contains(where: { $0 == m.subjectType }) {
                     verbage += "integer"
                 } else if [UInt.self, UInt?.self, UInt64.self, UInt64?.self].contains(where: { $0 == m.subjectType }) {
-                    verbage += "biginteger"
+                    verbage += "bigint"
                 } else if [Date.self, Date?.self].contains(where: { $0 == m.subjectType }) {
                     verbage += "timestamp"
                 } else {
