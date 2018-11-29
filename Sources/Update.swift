@@ -7,7 +7,7 @@
 //
 
 import StORM
-import PerfectLogger
+import PerfectLib
 
 /// Extends the main class with update functions.
 extension PostgresStORM {
@@ -31,7 +31,7 @@ extension PostgresStORM {
 		do {
 			try exec(str, params: paramsWithId)
 		} catch {
-			LogFile.error("Error msg: \(error)", logFile: "./StORMlog.txt")
+			Log.error(message:"Error msg: \(error)")
 			self.error = StORMError.error("\(error)")
 			throw error
 		}
@@ -54,7 +54,7 @@ extension PostgresStORM {
 		do {
 			return try update(cols: keys, params: vals, idName: idName, idValue: idValue)
 		} catch {
-			LogFile.error("Error msg: \(error)", logFile: "./StORMlog.txt")
+			Log.error(message:"Error msg: \(error)")
 			throw StORMError.error("\(error)")
 		}
 	}

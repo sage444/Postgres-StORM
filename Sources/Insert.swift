@@ -7,7 +7,7 @@
 //
 
 import StORM
-import PerfectLogger
+import PerfectLib
 
 /// Performs insert functions as an extension to the main class.
 extension PostgresStORM {
@@ -24,7 +24,7 @@ extension PostgresStORM {
 		do {
 			return try insert(cols: keys, params: vals)
 		} catch {
-			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
+			Log.error(message:"Error: \(error)")
 			throw StORMError.error("\(error)")
 		}
 	}
@@ -35,7 +35,7 @@ extension PostgresStORM {
 		do {
 			return try insert(cols: cols, params: params, idcolumn: idname)
 		} catch {
-			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
+			Log.error(message:"Error: \(error)")
 			throw StORMError.error("\(error)")
 		}
 	}
@@ -55,7 +55,7 @@ extension PostgresStORM {
 			let response = try exec(str, params: params)
 			return parseRows(response)[0].data[idcolumn.lowercased()]!
 		} catch {
-			LogFile.error("Error: \(error)", logFile: "./StORMlog.txt")
+			Log.error(message:"Error: \(error)")
 			self.error = StORMError.error("\(error)")
 			throw error
 		}

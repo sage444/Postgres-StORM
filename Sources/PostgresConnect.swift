@@ -8,7 +8,7 @@
 
 import StORM
 import PerfectPostgreSQL
-import PerfectLogger
+import PerfectLib
 
 public enum PostgresConnectionState {
 	case good, bad
@@ -44,7 +44,7 @@ open class PostgresConnect: StORMConnect {
 	// Connection String
 	private func connectionString() -> String {
 		let conn = "postgresql://\(credentials.username.stringByEncodingURL):\(credentials.password.stringByEncodingURL)@\(credentials.host.stringByEncodingURL):\(credentials.port)/\(database.stringByEncodingURL)"
-		if StORMdebug { LogFile.info("Postgres conn: \(conn)", logFile: "./StORMlog.txt") }
+		if StORMdebug { Log.info(message:"Postgres conn: \(conn)") }
 		return conn
 	}
 
@@ -55,9 +55,9 @@ open class PostgresConnect: StORMConnect {
 		if status != .ok {
 			state = .bad
 			resultCode = .error("\(server.errorMessage())")
-			if StORMdebug { LogFile.error("Postgres conn error: \(server.errorMessage())", logFile: "./StORMlog.txt") }
+			if StORMdebug { Log.error(message:"Postgres conn error: \(server.errorMessage())") }
 		} else {
-			if StORMdebug { LogFile.info("Postgres conn state: ok", logFile: "./StORMlog.txt") }
+			if StORMdebug { Log.info(message:"Postgres conn state: ok") }
 			resultCode = .noError
 		}
 	}
