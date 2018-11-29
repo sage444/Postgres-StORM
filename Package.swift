@@ -11,6 +11,6 @@ let package = Package(
         .package(url: "https://github.com/SwiftORM/StORM.git", from: "3.0.0"),
         ],
     targets: [
-        .target(name: "PostgresStORM", dependencies: ["PerfectPostgreSQL", "StORM", "PerfectLogger"], path: "Sources")
+        .target(name: "PostgresStORM", dependencies: ["PerfectPostgreSQL", "StORM"], path: "Sources")
     ]
 )
