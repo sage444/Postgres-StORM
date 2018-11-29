@@ -335,7 +335,7 @@ open class PostgresStORM: StORM, StORMProtocol {
     
     open func createIndexFor(field: String) throws {
         let lovercased = field.lowercased()
-        let statement = "CREATE INDEX IF NOT EXISTS '\(lovercased)_idx' ON \(table()) (\(lovercased));"
+        let statement = "CREATE INDEX IF NOT EXISTS \(lovercased)_idx ON \(table()) (\(lovercased));"
         if StORMdebug { Log.info(message: "createStatement: \(statement)") }
         
         do {
