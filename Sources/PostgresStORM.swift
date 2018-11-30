@@ -31,6 +31,21 @@ public struct PostgresConnector {
 
 }
 
+public struct DBDateFormatter {
+    private static var formatter: DateFormatter? = nil
+    public static func get() -> DateFormatter {
+        if formatter == nil {
+            let f = DateFormatter()
+            f.timeZone = TimeZone.init(secondsFromGMT: 0)
+            f.dateFormat = "yyyy-MM-dd HH:mm:ss" // 2018-10-15 14:57:23
+            formatter = f
+        }
+        return formatter!
+    }
+}
+
+
+
 /// SuperClass that inherits from the foundation "StORM" class.
 /// Provides PosgreSQL-specific ORM functionality to child classes
 open class PostgresStORM: StORM, StORMProtocol {

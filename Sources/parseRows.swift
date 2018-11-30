@@ -9,12 +9,10 @@
 import StORM
 import PerfectPostgreSQL
 import PerfectLib
-//import PerfectXML
 import Foundation
 
 /// Supplies the parseRows method extending the main class.
 extension PostgresStORM {
-	
 	/// parseRows takes the [String:Any] result and returns an array of StormRows
 	public func parseRows(_ result: PGResult) -> [StORMRow] {
 		var resultRows = [StORMRow]()
@@ -59,10 +57,8 @@ extension PostgresStORM {
 
 				case "date", "timestamp":
                     if let output = result.getFieldString(tupleIndex: x, fieldIndex: f) {
-                        let formatter = DateFormatter()
-                        formatter.timeZone = TimeZone.init(secondsFromGMT: 0)
-                        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss" // 2018-10-15 14:57:23
-                        params[result.fieldName(index: f)!] = formatter.date(from: output)
+                        
+                        params[result.fieldName(index: f)!] = DBDateFormatter.get().date(from: output)
                     }
 					// time
 					// timestamp
