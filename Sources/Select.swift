@@ -86,13 +86,23 @@ extension PostgresStORM {
 		groupBy:		[String] = []
 		) throws {
 
-		let clauseCount = "COUNT(*) AS counter"
+        let isGrouped = groupBy.count > 0
 		var clauseSelectList = "*"
 		var clauseWhere = ""
 		var clauseOrder = ""
 
 		if columns.count > 0 {
-			clauseSelectList = "\""+columns.joined(separator: "\",\"")+"\""
+            clauseSelectList = ""
+            for clmn in columns {
+                // function
+                if clmn.contains(string: "(") && clmn.contains(string: ")") {
+                    clauseSelectList += clmn
+                } else { // regular collumn name
+                    clauseSelectList += "\"" + clmn + "\""
+                }
+                
+                clauseSelectList += clmn == columns.last ? " " : ", "
+            }
 		} else {
 			var keys = [String]()
 			for i in cols() {
@@ -113,23 +123,34 @@ extension PostgresStORM {
 			clauseOrder = " ORDER BY \(colsjoined)"
 		}
 		do {
-			let getCount = try execRows("SELECT \(clauseCount) FROM \(table()) \(clauseWhere)", params: paramsString)
-			var numrecords = 0
-			if (getCount.first != nil) {
-				numrecords = getCount.first?.data["counter"] as? Int ?? 0
-			}
-			results.cursorData = StORMCursor(
-				limit: cursor.limit,
-				offset: cursor.offset,
-				totalRecords: numrecords)
-
-			if numrecords == 0 { return }
+            if !isGrouped {
+                let clauseCount = "COUNT(*) AS counter"
+                let getCount = try execRows("SELECT \(clauseCount) FROM \(table()) \(clauseWhere)", params: paramsString)
+                var numrecords = 0
+                if (getCount.first != nil) {
+                    numrecords = getCount.first?.data["counter"] as? Int ?? 0
+                }
+                results.cursorData = StORMCursor(
+                    limit: cursor.limit,
+                    offset: cursor.offset,
+                    totalRecords: numrecords)
+                
+                if numrecords == 0 { return }
+            }
 			// SELECT ASSEMBLE
-			var str = "SELECT \(clauseSelectList.lowercased()) FROM \(table()) \(clauseWhere) \(clauseOrder)"
+			var str = "SELECT \(clauseSelectList.lowercased()) FROM \(table()) \(clauseWhere)"
 
 
-			// TODO: Add joins, having, groupby
+			// TODO: Add joins, having
 
+            if groupBy.count > 0 {
+                str += " GROUP BY "
+                let gb = groupBy.joined(separator: ", ")
+                str += gb
+            }
+            
+            str += " \(clauseOrder)"
+            
 			if cursor.limit > 0 {
 				str += " LIMIT \(cursor.limit)"
 			}
@@ -141,7 +162,7 @@ extension PostgresStORM {
 			results.rows = try execRows(str, params: paramsString)
 
 			// if just one row returned, act like a "GET"
-			if results.cursorData.totalRecords == 1 { makeRow() }
+			if !isGrouped && results.cursorData.totalRecords == 1 { makeRow() }
 
 			//return results
 		} catch {
