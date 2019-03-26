@@ -8,7 +8,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/PerfectlySoft/Perfect-PostgreSQL.git", from: "3.0.0"),
-        .package(url: "https://github.com/SwiftORM/StORM.git", from: "3.0.0"),
+        .package(url: "https://github.com/sage444/StORM.git", .branch("master")),
         ],
     targets: [
         .target(name: "PostgresStORM", dependencies: ["PerfectPostgreSQL", "StORM"], path: "Sources")
