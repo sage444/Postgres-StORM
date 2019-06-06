@@ -87,18 +87,21 @@ extension PostgresStORM {
 		) throws {
 
         let isGrouped = groupBy.count > 0
+        let isJoined = joins.count > 0
 		var clauseSelectList = "*"
 		var clauseWhere = ""
 		var clauseOrder = ""
+        let tableName = table()
 
 		if columns.count > 0 {
             clauseSelectList = ""
             for clmn in columns {
+                let tbNamePrefix = isJoined ? "\"" + "\(tableName)" + "\"" + "." : ""
                 // function
                 if clmn.contains(string: "(") && clmn.contains(string: ")") {
                     clauseSelectList += clmn
                 } else { // regular collumn name
-                    clauseSelectList += "\"" + clmn + "\""
+                    clauseSelectList += tbNamePrefix + "\"" + clmn + "\""
                 }
                 
                 clauseSelectList += clmn == columns.last ? " " : ", "
@@ -108,7 +111,8 @@ extension PostgresStORM {
 			for i in cols() {
 				keys.append(i.0)
 			}
-			clauseSelectList = "\""+keys.joined(separator: "\",\"")+"\""
+            let tbNamePrefix = isJoined ? "\"" + "\(tableName)" + "\"" + "." : ""
+			clauseSelectList = tbNamePrefix + "\""+keys.joined(separator: "\", \(tbNamePrefix)\"")+"\""
 		}
 		if whereclause.count > 0 {
 			clauseWhere = " WHERE \(whereclause)"
@@ -118,14 +122,23 @@ extension PostgresStORM {
 		for i in 0..<params.count {
 			paramsString.append(String(describing: params[i]))
 		}
+        
+        if joins.count > 0 {
+            var joinStr = ""
+            for j in joins {
+                joinStr.append(" \(j.direction) JOIN \(j.table) ON \(j.onCondition)")
+            }
+            clauseWhere = "\(joinStr) \(clauseWhere)"
+        }
+        
 		if orderby.count > 0 {
 			let colsjoined = orderby.joined(separator: ",")
 			clauseOrder = " ORDER BY \(colsjoined)"
 		}
 		do {
-            if !isGrouped {
+            if !isGrouped && !isJoined {
                 let clauseCount = "COUNT(*) AS counter"
-                let getCount = try execRows("SELECT \(clauseCount) FROM \(table()) \(clauseWhere)", params: paramsString)
+                let getCount = try execRows("SELECT \(clauseCount) FROM \(tableName) \(clauseWhere)", params: paramsString)
                 var numrecords = 0
                 if (getCount.first != nil) {
                     numrecords = getCount.first?.data["counter"] as? Int ?? 0
