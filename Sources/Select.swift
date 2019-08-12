@@ -126,7 +126,7 @@ extension PostgresStORM {
         if joins.count > 0 {
             var joinStr = ""
             for j in joins {
-                joinStr.append(" \(j.direction) JOIN \(j.table) ON \(j.onCondition)")
+                joinStr.append(" \(j.direction) JOIN \(j.table) \(j.alias) ON \(j.onCondition)")
             }
             clauseWhere = "\(joinStr) \(clauseWhere)"
         }
